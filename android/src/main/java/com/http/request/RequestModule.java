@@ -3,6 +3,7 @@ package com.http.request;
 
 import android.content.Intent;
 import android.net.Uri;
+import android.telecom.Call;
 import android.util.Log;
 import android.view.View;
 
@@ -62,6 +63,15 @@ public class RequestModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
+    public void tempFile(String prefix, String suffix, Callback cb) {
+        try {
+            cb.invoke(File.createTempFile(prefix, suffix).toURI());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @ReactMethod
     public void file(){
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
         intent.setType("file/*");
@@ -94,6 +104,41 @@ public class RequestModule extends ReactContextBaseJavaModule {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    @ReactMethod
+    public void download(final ReadableMap args, final Callback start, final Promise result) {
+        RequestParams params = new RequestParams();
+
+        try {
+            params.put("name", getCurrentActivity()
+                    .getContentResolver()
+                    .openInputStream(Uri.parse(args.getString("uri"))));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        FileAsyncHttpResponseHandler responder = new FileAsyncHttpResponseHandler(getCurrentActivity()) {
+            @Override
+            public void onStart() {
+                if(start != null)
+                    start.invoke();
+            }
+
+            @Override
+            public void onSuccess(int statusCode, Header[] headers, File response) {
+                if(result != null)
+                    result.resolve(statusCode);
+            }
+
+            @Override
+            public void onFailure(int statusCode, Header[] headers, Throwable throwable, File file) {
+                if(result != null)
+                    result.reject(String.valueOf(statusCode), throwable);
+            }
+        };
+
+        client.get(args.getString("url"), params, responder);
     }
 
     @ReactMethod
