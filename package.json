@@ -1,6 +1,6 @@
 {
-  "name": "react-native-image-zoom",
-  "version": "0.12.0",
+  "name": "react-native-io-utils",
+  "version": "0.0.1",
   "description": "React Native wrappers for PhotoView and universal-image-loader",
   "main": "index.js",
   "scripts": {
@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Anthonyzou/react-native-image-zoom.git"
+    "url": "git+https://github.com/Anthonyzou/react-native-io-utils.git"
   },
   "keywords": [
     "react-native",
@@ -18,7 +18,7 @@
   "author": "Anthony Ou",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/Anthonyzou/react-native-image-zoom/issues"
+    "url": "https://github.com/Anthonyzou/react-native-io-utils/issues"
   },
-  "homepage": "https://github.com/Anthonyzou/react-native-image-zoom#readme"
+  "homepage": "https://github.com/Anthonyzou/react-native-io-utils#readme"
 }

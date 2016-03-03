@@ -8,6 +8,7 @@ import android.util.Log;
 import android.view.View;
 
 import com.facebook.react.ReactActivity;
+import com.facebook.react.bridge.ActivityEventListener;
 import com.facebook.react.bridge.Callback;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -32,12 +33,14 @@ import java.util.Map;
  * Created by azou on 15/02/16.
  */
 
-public class IOUtils extends ReactContextBaseJavaModule {
+public class IOUtils extends ReactContextBaseJavaModule implements ActivityEventListener {
 
     final AsyncHttpClient client = new AsyncHttpClient();
+    private Promise prom;
 
     public IOUtils(ReactApplicationContext reactContext) {
         super(reactContext);
+        reactContext.addActivityEventListener(this);
     }
 
     @Override
@@ -93,17 +96,11 @@ public class IOUtils extends ReactContextBaseJavaModule {
         getCurrentActivity().startActivityForResult(intent, 3);
     }
 
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        ((ReactActivity) getCurrentActivity()).onActivityResult(requestCode, resultCode, data);
-
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
         if(data == null) return;
-
         Log.d("RESULT", String.format("%d %d %s", requestCode, resultCode, data.toString()));
-        try {
-            getCurrentActivity().getContentResolver().openInputStream(data.getData()).close();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+
     }
 
     @ReactMethod
@@ -128,7 +125,9 @@ public class IOUtils extends ReactContextBaseJavaModule {
             @Override
             public void onSuccess(int statusCode, Header[] headers, File response) {
                 if(result != null)
-                    result.resolve(statusCode);
+                    result.resolve(
+                            response.toURI()
+                    );
             }
 
             @Override
