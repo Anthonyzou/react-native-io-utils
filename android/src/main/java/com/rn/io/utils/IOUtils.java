@@ -1,4 +1,4 @@
-package com.http.request;
+package com.rn.io.utils;
 
 
 import android.content.Intent;
@@ -32,17 +32,17 @@ import java.util.Map;
  * Created by azou on 15/02/16.
  */
 
-public class RequestModule extends ReactContextBaseJavaModule {
+public class IOUtils extends ReactContextBaseJavaModule {
 
     final AsyncHttpClient client = new AsyncHttpClient();
 
-    public RequestModule(ReactApplicationContext reactContext) {
+    public IOUtils(ReactApplicationContext reactContext) {
         super(reactContext);
     }
 
     @Override
     public String getName() {
-        return "RequestAndroid";
+        return "IOUtils";
     }
 
     @Override

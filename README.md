@@ -1,20 +1,14 @@
-# React image pan and zoom for Android
+# React native IO utils for Android
 
-This is still very basic since I am quite new to React. There is plenty of room for improvment by adding
-additional react bindings for props and callbacks.
+There is plenty of room for improvment by adding additional react bindings for props and callbacks.
 
 ##### Props:
 | Property | Type | Default | Description |
 |---------------|----------|--------------|----------------------------------------------------------------|
 | souce | Object | null | same as the react image format |
-| tintColor | string | null | optional tintColor |
-| onTap | function | null | optional on tap listener |
-| scale | float | null | optional scale amount |
-| scaleType | string | null | one of center, centerCrop, centerInside, fitCenter, fitStart, fitEnd, fitXY, matrix|
 
 
 ## Include in your App
-
 
 Installation
 ------------
@@ -56,8 +50,8 @@ public class MainActivity extends ReactActivity {
 
 ---
 
-TeamLockr image zoom
-Team Lockr image zoom for react native
+TeamLockr io utils
+Team Lockr io utils for react native
 
 These are functions created by the TeamLockr Team created for the TeamLockr platform.
 

@@ -10,27 +10,52 @@ import React, {
   Text,
   ScrollView,
   Dimensions,
+  TouchableHighlight,
   TextInput,
 } from 'react-native';
 
-import Image from 'react-native-image-zoom'
 import {Actions, Router, Route, Schema, Animations, TabBar} from 'react-native-router-flux'
+import _ from 'lodash'
+import I from './ioUtils.js'
 
 class Example extends Component {
   constructor(a,b){
     super(a,b)
     this.state = {
-      text:'http://placehold.it/250'
     }
+    console.log(I)
   }
   render() {
     return (
       <ScrollView>
+        <TouchableHighlight onPress={()=>{
+              I.file()
+          }}>
+          <Text>
+            file
+          </Text>
+        </TouchableHighlight>
+        <TouchableHighlight onPress={()=>{
+            I.image()
+          }}>
+          <Text>
+            image
+          </Text>
+        </TouchableHighlight>
+        <TouchableHighlight onPress={()=>{
+            I.video()
+          }}>
+          <Text>
+            video
+          </Text>
+        </TouchableHighlight>
+        <TouchableHighlight onPress={()=>{
 
-        <TextInput onChangeText={(text) => this.setState({text:text})} value={this.state.text}></TextInput>
-          <Image onTap={()=>{console.log('ON TAP')}} style={styles.image} source={{uri:this.state.text}}></Image>
-          <Image scale={2} resizeMode={"center"} onTap={()=>{console.log('ON TAP')}} style={styles.image} source={{uri:this.state.text}}></Image>
-          <Image scale={1} style={styles.image} source={require('./stock-vector-car-on-the-golden-state-bridge-265288760.jpg')}></Image>
+          }}>
+          <Text>
+            hello
+          </Text>
+        </TouchableHighlight>
       </ScrollView>
     );
   }
