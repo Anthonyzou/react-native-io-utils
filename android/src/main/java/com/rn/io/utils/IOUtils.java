@@ -118,7 +118,10 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if(data == null) return;
+        if(data == null) {
+            requests.remove(requestCode);
+            return ;
+        }
 
 //        Log.d("RESULT", String.format("%d %d %s", requestCode, resultCode, data.toString()));
 
