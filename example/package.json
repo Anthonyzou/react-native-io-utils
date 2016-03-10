@@ -4,9 +4,10 @@
   "private": true,
   "scripts": {
     "start": "node node_modules/react-native/local-cli/cli.js start",
-    "setupDev" : "mkdir node_modules/react-native-io-utils ; rm -rf node_modules/react-native-io-utils/index.js node_modules/react-native-io-utils/android; ln -s  ../../../android/ node_modules/react-native-io-utils/android;ln -s  ../../../index.js node_modules/react-native-io-utils/index.js"
+    "setupDev": "mkdir node_modules/react-native-io-utils ; rm -rf node_modules/react-native-io-utils/index.js node_modules/react-native-io-utils/android; ln -s  ../../../android/ node_modules/react-native-io-utils/android;ln -s  ../../../index.js node_modules/react-native-io-utils/index.js"
   },
   "dependencies": {
+    "path": "^0.12.7",
     "react-native": "^0.21.0",
     "react-native-router-flux": "^2.3.9"
   }

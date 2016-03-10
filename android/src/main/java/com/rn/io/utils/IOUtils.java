@@ -3,18 +3,22 @@ package com.rn.io.utils;
 
 import android.content.Intent;
 import android.net.Uri;
+import android.support.annotation.IntDef;
 import android.telecom.Call;
 import android.util.Log;
 import android.view.View;
+import android.webkit.MimeTypeMap;
 
 import com.facebook.react.ReactActivity;
 import com.facebook.react.bridge.ActivityEventListener;
+import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.Callback;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableMap;
+import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.common.MapBuilder;
 
 import com.loopj.android.http.AsyncHttpClient;
@@ -27,6 +31,9 @@ import cz.msebera.android.httpclient.HttpEntity;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -35,7 +42,8 @@ import java.util.Map;
 
 public class IOUtils extends ReactContextBaseJavaModule implements ActivityEventListener {
 
-    final AsyncHttpClient client = new AsyncHttpClient();
+
+    final private Map<Integer, Callback> requests = new HashMap();
     private Promise prom;
 
     public IOUtils(ReactApplicationContext reactContext) {
@@ -75,36 +83,57 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
     }
 
     @ReactMethod
-    public void file(){
+    public void file(Callback cb){
+        Long time= System.currentTimeMillis();
+        int id = time.intValue();
+
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
         intent.setType("file/*");
-        getCurrentActivity().startActivityForResult(intent, 1);
+        getCurrentActivity().startActivityForResult(intent, id);
+        requests.put(id , cb);
     }
 
     @ReactMethod
-    public void image(){
+    public void image(Callback cb){
+        Long time= System.currentTimeMillis();
+        int id = time.intValue();
+
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
         intent.setType("image/*");
-        getCurrentActivity().startActivityForResult(intent, 2);
+        getCurrentActivity().startActivityForResult(intent, id);
+        requests.put(id, cb);
     }
 
     @ReactMethod
-    public void video(){
+    public void video(Callback cb){
+        Long time= System.currentTimeMillis();
+        int id = time.intValue();
+
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-        intent.setType("video/*|image/*");
+//        intent.setType("video/*|image/*");
         intent.setType("video/*");
-        getCurrentActivity().startActivityForResult(intent, 3);
+        getCurrentActivity().startActivityForResult(intent, id);
+        requests.put(id, cb);
     }
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         if(data == null) return;
-        Log.d("RESULT", String.format("%d %d %s", requestCode, resultCode, data.toString()));
+
+//        Log.d("RESULT", String.format("%d %d %s", requestCode, resultCode, data.toString()));
+
+        WritableMap arguments = Arguments.createMap();
+        arguments.putString("uri", data.getData().toString());
+        arguments.putString("path", data.getData().getEncodedPath());
+
+        requests.get(requestCode).invoke(arguments);
+        requests.remove(requestCode);
 
     }
 
     @ReactMethod
     public void download(final ReadableMap args, final Callback start, final Promise result) {
+        AsyncHttpClient client = new AsyncHttpClient();
         RequestParams params = new RequestParams();
 
         try {
@@ -137,19 +166,33 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
             }
         };
 
-        client.get(args.getString("url"), params, responder);
+        client.get(args.getString("uploadUrl"), params, responder);
+    }
+
+    public static String getMimeType(String url) {
+        String type = null;
+        String extension = MimeTypeMap.getFileExtensionFromUrl(url);
+        if (extension != null) {
+            type = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension);
+        }
+        return type;
     }
 
     @ReactMethod
     public void upload(final ReadableMap args, final Callback start, final Promise result) {
+        AsyncHttpClient client = new AsyncHttpClient();
+
         RequestParams params = new RequestParams();
+        ReadableMap file = args.getMap("file");
 
         try {
-            params.put("name", getCurrentActivity()
-                            .getContentResolver()
-                            .openInputStream(Uri.parse(args.getString("uri"))));
+            Uri uri = Uri.parse(file.getString("uri"));
+            params.put(file.getString("name"),
+                    getCurrentActivity().getContentResolver().openInputStream(uri),
+                    file.getString("filename"),
+                    getMimeType(file.getString("filepath")));
         } catch (Exception e) {
-            e.printStackTrace();
+            result.reject(e);
         }
 
         FileAsyncHttpResponseHandler responder = new FileAsyncHttpResponseHandler(getCurrentActivity()) {
@@ -161,8 +204,18 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
 
             @Override
             public void onSuccess(int statusCode, Header[] headers, File response) {
-                if(result != null)
-                    result.resolve(statusCode);
+                if(result != null){
+
+                    WritableMap arguments = Arguments.createMap();
+                    WritableMap headerObj = Arguments.createMap();
+                    for(Header H : headers){
+                        headerObj.putString(H.getName(), H.getValue());
+                    }
+                    arguments.putInt("statusCode", statusCode);
+                    arguments.putMap("headers", headerObj);
+                    result.resolve(arguments);
+                }
+
             }
 
             @Override
@@ -172,6 +225,7 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
             }
         };
 
-        client.post(args.getString("url"), params, responder);
+        client.post(args.getString("uploadUrl"), params, responder);
     }
+
 }
