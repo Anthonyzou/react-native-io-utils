@@ -2,15 +2,13 @@ package com.rn.io.utils;
 
 
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Environment;
 import android.provider.MediaStore;
-import android.support.v7.app.AlertDialog;
 import android.util.Log;
 import android.webkit.MimeTypeMap;
-import android.widget.ArrayAdapter;
 
 import com.facebook.react.bridge.ActivityEventListener;
 import com.facebook.react.bridge.Arguments;
@@ -30,9 +28,9 @@ import com.loopj.android.http.RequestParams;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import cz.msebera.android.httpclient.Header;
@@ -45,10 +43,11 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
 
 
     private Map<Integer, Promise> requests;
-
+    private Map<Integer, File> captureRequests;
     public IOUtils(ReactApplicationContext reactContext) {
         super(reactContext);
         requests = new HashMap<>();
+        captureRequests = new HashMap<>();
         reactContext.addActivityEventListener(this);
     }
 
@@ -77,18 +76,7 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
     }
 
     @ReactMethod
-    public void customSelect(String type, Promise cb){
-        Long time = System.currentTimeMillis();
-        int id = time.intValue();
-
-        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-        intent.setType(type);
-        getCurrentActivity().startActivityForResult(intent, id);
-        requests.put(id , cb);
-    }
-
-    @ReactMethod
-    public void file(Promise cb){
+    public void pickFile(Promise cb){
         Long time = System.currentTimeMillis();
         int id = time.intValue();
 
@@ -99,7 +87,7 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
     }
 
     @ReactMethod
-    public void image(Promise cb){
+    public void pickImage(Promise cb){
         Long time = System.currentTimeMillis();
         int id = time.intValue();
 
@@ -111,11 +99,17 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
     }
 
     @ReactMethod
-    public void camera(Promise cb){
+    public void takePicture(Promise cb){
         Long time = System.currentTimeMillis();
         int id = time.intValue();
         Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        String formattedImageName = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".jpg";
+        File image_file = new File(Environment.getExternalStoragePublicDirectory(
+                Environment.DIRECTORY_PICTURES), formattedImageName);
+        Uri imageUri = Uri.fromFile(image_file);
+        intent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
         getCurrentActivity().startActivityForResult(intent, id);
+        captureRequests.put(id, image_file);
         requests.put(id, cb);
     }
 
@@ -129,7 +123,7 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
     }
 
     @ReactMethod
-    public void video(Promise cb){
+    public void pickVideo(Promise cb){
         Long time = System.currentTimeMillis();
         int id = time.intValue();
 
@@ -141,16 +135,28 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if(data == null || requests.get(requestCode) == null || data.getData() == null) {
+        Log.d("result", String.format("%b %b %b", data == null ,
+                requests.get(requestCode) == null ,
+                captureRequests.get(requestCode) == null));
+
+        // if this id corresponse to a camera requestcode
+        //data is null when coming from camera or a cancel
+        if(data == null && captureRequests.get(requestCode) == null) {
             requests.remove(requestCode);
             return ;
         }
 
         File f;
-        if(data.getData().toString().contains("content://")){
-            f = new File(getRealPathFromURI(getCurrentActivity(), data.getData()));
+        if(captureRequests.get(requestCode) != null){
+            f = captureRequests.get(requestCode);
+            Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+            Uri contentUri = Uri.fromFile(f);
+            mediaScanIntent.setData(contentUri);
+            getCurrentActivity().sendBroadcast(mediaScanIntent);
         }
-        else{
+        else if(data.getData().toString().contains("content://")){
+            f = new File(getRealPathFromURI(getCurrentActivity(), data.getData()));
+        } else{
             f = new File(data.getData().getPath());
         }
 
@@ -160,7 +166,7 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
 
         requests.get(requestCode).resolve(arguments);
         requests.remove(requestCode);
-
+        captureRequests.remove(requestCode);
     }
 
     public String getRealPathFromURI(Context context, Uri contentUri) {
@@ -176,80 +182,6 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
                 cursor.close();
             }
         }
-    }
-
-    @ReactMethod
-    public void pick(final ReadableMap options, final Promise callback) {
-        final WritableMap response = Arguments.createMap();
-
-        if (getCurrentActivity() == null) {
-            response.putString("error", "can't find current Activity");
-            callback.resolve(response);
-            return;
-        }
-
-        List<String> mTitles = new ArrayList<>();
-        List<String> mActions = new ArrayList<>();
-
-        String cancelButtonTitle = "Cancel";
-
-        if (options.hasKey("takePhotoButtonTitle")
-                && options.getString("takePhotoButtonTitle") != null
-                && !options.getString("takePhotoButtonTitle").isEmpty()) {
-            mTitles.add(options.getString("takePhotoButtonTitle"));
-            mActions.add("photo");
-        }
-        if (options.hasKey("chooseFromLibraryButtonTitle")
-                && options.getString("chooseFromLibraryButtonTitle") != null
-                && !options.getString("chooseFromLibraryButtonTitle").isEmpty()) {
-            mTitles.add(options.getString("chooseFromLibraryButtonTitle"));
-            mActions.add("library");
-        }
-        if (options.hasKey("cancelButtonTitle")
-                && !options.getString("cancelButtonTitle").isEmpty()) {
-            cancelButtonTitle = options.getString("cancelButtonTitle");
-        }
-        mTitles.add(cancelButtonTitle);
-        mActions.add("cancel");
-
-        String[] option = new String[mTitles.size()];
-        option = mTitles.toArray(option);
-
-        String[] action = new String[mActions.size()];
-        action = mActions.toArray(action);
-        final String[] act = action;
-
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(getCurrentActivity(),
-                android.R.layout.select_dialog_item, option);
-        AlertDialog.Builder builder = new AlertDialog.Builder(getCurrentActivity());
-        if (options.hasKey("title") && options.getString("title") != null && !options.getString("title").isEmpty()) {
-            builder.setTitle(options.getString("title"));
-        }
-
-        builder.setAdapter(adapter, new DialogInterface.OnClickListener() {
-            public void onClick(DialogInterface dialog, int index) {
-                if (act[index].equals("photo")) {
-                    camera(callback);
-                } else if (act[index].equals("library")) {
-                    video(callback);
-                }
-            }
-        });
-
-        final AlertDialog dialog = builder.create();
-        /**
-         * override onCancel method to callback cancel in case of a touch outside of
-         * the dialog or the BACK key pressed
-         */
-        dialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
-            @Override
-            public void onCancel(DialogInterface dialog) {
-                dialog.dismiss();
-                response.putBoolean("didCancel", true);
-                callback.resolve(response);
-            }
-        });
-        dialog.show();
     }
 
     @ReactMethod
