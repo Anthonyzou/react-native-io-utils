@@ -20,6 +20,7 @@ dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
     testCompile 'junit:junit:4.12'
     compile 'com.facebook.react:react-native:+'
+    compile 'commons-io:commons-io:2.4'
     compile 'com.loopj.android:android-async-http:1.4.9'
 }
 
