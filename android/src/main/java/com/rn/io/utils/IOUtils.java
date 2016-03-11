@@ -2,19 +2,16 @@ package com.rn.io.utils;
 
 
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.MediaStore;
-import android.support.annotation.IntDef;
-import android.telecom.Call;
+import android.support.v7.app.AlertDialog;
 import android.util.Log;
-import android.view.View;
 import android.webkit.MimeTypeMap;
+import android.widget.ArrayAdapter;
 
-import com.facebook.common.file.FileUtils;
-import com.facebook.react.ReactActivity;
 import com.facebook.react.bridge.ActivityEventListener;
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.Callback;
@@ -27,21 +24,18 @@ import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.ReadableMapKeySetIterator;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.common.MapBuilder;
-
 import com.loopj.android.http.AsyncHttpClient;
 import com.loopj.android.http.FileAsyncHttpResponseHandler;
 import com.loopj.android.http.RequestParams;
 
 import java.io.File;
-import cz.msebera.android.httpclient.Header;
-import cz.msebera.android.httpclient.HttpEntity;
-
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+
+import cz.msebera.android.httpclient.Header;
 
 /**
  * Created by azou on 15/02/16.
@@ -50,7 +44,7 @@ import java.util.Map;
 public class IOUtils extends ReactContextBaseJavaModule implements ActivityEventListener {
 
 
-    private Map<Integer, Callback> requests;
+    private Map<Integer, Promise> requests;
 
     public IOUtils(ReactApplicationContext reactContext) {
         super(reactContext);
@@ -83,7 +77,7 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
     }
 
     @ReactMethod
-    public void customSelect(String type, Callback cb){
+    public void customSelect(String type, Promise cb){
         Long time = System.currentTimeMillis();
         int id = time.intValue();
 
@@ -94,7 +88,7 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
     }
 
     @ReactMethod
-    public void file(Callback cb){
+    public void file(Promise cb){
         Long time = System.currentTimeMillis();
         int id = time.intValue();
 
@@ -105,7 +99,7 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
     }
 
     @ReactMethod
-    public void image(Callback cb){
+    public void image(Promise cb){
         Long time = System.currentTimeMillis();
         int id = time.intValue();
 
@@ -117,31 +111,25 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
     }
 
     @ReactMethod
-    public void camera(Callback cb){
+    public void camera(Promise cb){
         Long time = System.currentTimeMillis();
         int id = time.intValue();
-
-        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-
-        intent.setType("image/*");
+        Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         getCurrentActivity().startActivityForResult(intent, id);
         requests.put(id, cb);
     }
 
     @ReactMethod
-    public void recordVideo(Callback cb){
+    public void recordVideo(Promise cb){
         Long time = System.currentTimeMillis();
         int id = time.intValue();
-
-        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-
-        intent.setType("image/*");
+        Intent intent = new Intent(MediaStore.ACTION_VIDEO_CAPTURE);
         getCurrentActivity().startActivityForResult(intent, id);
         requests.put(id, cb);
     }
 
     @ReactMethod
-    public void video(Callback cb){
+    public void video(Promise cb){
         Long time = System.currentTimeMillis();
         int id = time.intValue();
 
@@ -153,8 +141,7 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if(requests.get(requestCode) == null) { return; }
-        if(data == null ) {
+        if(data == null || requests.get(requestCode) == null || data.getData() == null) {
             requests.remove(requestCode);
             return ;
         }
@@ -171,7 +158,7 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
         arguments.putString("uri", f.toURI().toString());
         arguments.putString("path", f.getAbsolutePath());
 
-        requests.get(requestCode).invoke(arguments);
+        requests.get(requestCode).resolve(arguments);
         requests.remove(requestCode);
 
     }
@@ -189,6 +176,80 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
                 cursor.close();
             }
         }
+    }
+
+    @ReactMethod
+    public void pick(final ReadableMap options, final Promise callback) {
+        final WritableMap response = Arguments.createMap();
+
+        if (getCurrentActivity() == null) {
+            response.putString("error", "can't find current Activity");
+            callback.resolve(response);
+            return;
+        }
+
+        List<String> mTitles = new ArrayList<>();
+        List<String> mActions = new ArrayList<>();
+
+        String cancelButtonTitle = "Cancel";
+
+        if (options.hasKey("takePhotoButtonTitle")
+                && options.getString("takePhotoButtonTitle") != null
+                && !options.getString("takePhotoButtonTitle").isEmpty()) {
+            mTitles.add(options.getString("takePhotoButtonTitle"));
+            mActions.add("photo");
+        }
+        if (options.hasKey("chooseFromLibraryButtonTitle")
+                && options.getString("chooseFromLibraryButtonTitle") != null
+                && !options.getString("chooseFromLibraryButtonTitle").isEmpty()) {
+            mTitles.add(options.getString("chooseFromLibraryButtonTitle"));
+            mActions.add("library");
+        }
+        if (options.hasKey("cancelButtonTitle")
+                && !options.getString("cancelButtonTitle").isEmpty()) {
+            cancelButtonTitle = options.getString("cancelButtonTitle");
+        }
+        mTitles.add(cancelButtonTitle);
+        mActions.add("cancel");
+
+        String[] option = new String[mTitles.size()];
+        option = mTitles.toArray(option);
+
+        String[] action = new String[mActions.size()];
+        action = mActions.toArray(action);
+        final String[] act = action;
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(getCurrentActivity(),
+                android.R.layout.select_dialog_item, option);
+        AlertDialog.Builder builder = new AlertDialog.Builder(getCurrentActivity());
+        if (options.hasKey("title") && options.getString("title") != null && !options.getString("title").isEmpty()) {
+            builder.setTitle(options.getString("title"));
+        }
+
+        builder.setAdapter(adapter, new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int index) {
+                if (act[index].equals("photo")) {
+                    camera(callback);
+                } else if (act[index].equals("library")) {
+                    video(callback);
+                }
+            }
+        });
+
+        final AlertDialog dialog = builder.create();
+        /**
+         * override onCancel method to callback cancel in case of a touch outside of
+         * the dialog or the BACK key pressed
+         */
+        dialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
+            @Override
+            public void onCancel(DialogInterface dialog) {
+                dialog.dismiss();
+                response.putBoolean("didCancel", true);
+                callback.resolve(response);
+            }
+        });
+        dialog.show();
     }
 
     @ReactMethod
