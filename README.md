@@ -7,34 +7,33 @@ There is plenty of room for improvment by adding additional react bindings for p
 |---------------|----------|--------------|----------------------------------------------------------------|
 | souce | Object | null | same as the react image format |
 
-
 ## Include in your App
 
 Installation
 ------------
 
-Install the npm package [`react-native-image-zoom`](https://www.npmjs.com/package/react-native-image-zoom). Inside your React Native project, run ([example](https://github.com/Anthonyzou/react-native-image-zoom/tree/master/example)):
+Install the npm package [`react-native-io-utils`](https://www.npmjs.com/package/react-native-io-utils). Inside your React Native project, run ([example](https://github.com/Anthonyzou/react-native-io-utils/tree/master/example)):
 ```bash
-npm install --save react-native-image-zoom
+npm install --save react-native-io-utils
 ```
 
-In `android/settings.gradle`, remove the line `include ':app'` and add the following lines
+In `android/settings.gradle` add the following lines
 ```
-include :react-native-image-zoom'
-project(':react-native-image-zoom').projectDir = file('../node_modules/react-native-image-zoom/android')
+include :react-native-io-utils'
+project(':react-native-io-utils').projectDir = file('../node_modules/react-native-io-utils/android')
 ```
 **NOTE** : If you have included other libraries in your project, the `include` line will contain the other dependencies too.
 
-In `android/app/build.gradle`, add a dependency to `':react-native-image-zoom'`
+In `android/app/build.gradle`, add a dependency to `':react-native-io-utils'`
 ```
 dependencies {
-    compile project(':react-native-image-zoom')
+    compile project(':react-native-io-utils')
 }
 ```
 
-Next, you need to change the `MainActivity` of your app to register `ReactNativeDialogsPackage` :
+Next, you need to change the `MainActivity` of your app to register `IOUtilsModule` :
 ```java
-import com.image.zoom.ReactImageZoom; // add this import
+import com.rn.io.utils.IOUtilsModule; // add this import
 
 public class MainActivity extends ReactActivity {
     //...
@@ -43,7 +42,7 @@ public class MainActivity extends ReactActivity {
     protected List<ReactPackage> getPackages() {
       return Arrays.<ReactPackage>asList(
           new MainReactPackage(),
-          new ReactImageZoom() // add this manager
+          new IOUtilsModule() // add this manager
       );
     }
 ```
