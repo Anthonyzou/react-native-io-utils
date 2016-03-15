@@ -189,16 +189,6 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
         AsyncHttpClient client = new AsyncHttpClient();
         RequestParams params = new RequestParams();
 
-        try {
-            params.put("name",
-                    getCurrentActivity()
-                            .getContentResolver()
-                            .openInputStream(Uri.parse(args.getString("uri")))
-            );
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
         FileAsyncHttpResponseHandler responder = new FileAsyncHttpResponseHandler(getCurrentActivity()) {
             @Override
             public void onStart() {
@@ -208,10 +198,12 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
 
             @Override
             public void onSuccess(int statusCode, Header[] headers, File response) {
-                if(result != null)
-                    result.resolve(
-                            response.toURI()
-                    );
+                if(result != null){
+                    WritableMap args = Arguments.createMap();
+                    args.putString("path", response.getAbsolutePath());
+                    args.putString("uri", response.toURI().toString());
+                    result.resolve(args);
+                }
             }
 
             @Override
@@ -221,7 +213,7 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
             }
         };
 
-        client.get(args.getString("uploadUrl"), params, responder);
+        client.get(args.getString("url"), params, responder);
     }
 
     public static String getMimeType(String url) {
