@@ -231,23 +231,24 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
         RequestParams params = new RequestParams();
         ReadableMapKeySetIterator iterator;
 
-        try {
+        if(args.hasKey("headers")) {
             ReadableMap headers = args.getMap("headers");
             iterator = headers.keySetIterator();
             while (iterator.hasNextKey()) {
                 String key = iterator.nextKey();
                 client.addHeader(key, headers.getString(key));
             }
-        }catch(Exception e){}
+        }
 
-        try {
+
+        if(args.hasKey("params")){
             ReadableMap reqParams = args.getMap("params");
             iterator = reqParams.keySetIterator();
             while (iterator.hasNextKey()) {
                 String key = iterator.nextKey();
                 params.add(key, reqParams.getString(key));
             }
-        } catch(Exception e){}
+        }
 
 
         ReadableArray files = args.getArray("files");
