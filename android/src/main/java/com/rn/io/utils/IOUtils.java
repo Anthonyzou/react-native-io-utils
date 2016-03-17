@@ -229,14 +229,28 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
     public void upload(final ReadableMap args, final Callback start, final Promise result) {
         AsyncHttpClient client = new AsyncHttpClient();
         RequestParams params = new RequestParams();
-        ReadableArray files = args.getArray("files");
-        ReadableMap headers = args.getMap("headers");
+        ReadableMapKeySetIterator iterator;
 
-        ReadableMapKeySetIterator iterator = headers.keySetIterator();
-        while (iterator.hasNextKey()) {
-            String key = iterator.nextKey();
-            client.addHeader(key, headers.getString(key));
-        }
+        try {
+            ReadableMap headers = args.getMap("headers");
+            iterator = headers.keySetIterator();
+            while (iterator.hasNextKey()) {
+                String key = iterator.nextKey();
+                client.addHeader(key, headers.getString(key));
+            }
+        }catch(Exception e){}
+
+        try {
+            ReadableMap reqParams = args.getMap("params");
+            iterator = reqParams.keySetIterator();
+            while (iterator.hasNextKey()) {
+                String key = iterator.nextKey();
+                params.add(key, reqParams.getString(key));
+            }
+        } catch(Exception e){}
+
+
+        ReadableArray files = args.getArray("files");
         for(int i = 0; i < files.size(); i++){
             ReadableMap file = files.getMap(i);
             try {
@@ -254,7 +268,6 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
                 return;
             }
         }
-
 
         FileAsyncHttpResponseHandler responder = new FileAsyncHttpResponseHandler(getCurrentActivity()) {
             @Override
@@ -296,8 +309,13 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
                     result.reject(String.valueOf(statusCode), throwable);
             }
         };
-
-        client.post(args.getString("uploadUrl"), params, responder);
+        String method = args.getString("method");
+        if(method == null || method.toLowerCase().equals("post")){
+            client.post(args.getString("uploadUrl"), params, responder);
+        }
+        else{
+            client.put(args.getString("uploadUrl"), params, responder);
+        }
     }
 
 }
