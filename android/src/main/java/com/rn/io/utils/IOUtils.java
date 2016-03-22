@@ -7,7 +7,7 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Environment;
 import android.provider.MediaStore;
-import android.util.Log;
+import android.util.SparseArray;
 import android.webkit.MimeTypeMap;
 
 import com.facebook.react.bridge.ActivityEventListener;
@@ -28,9 +28,8 @@ import com.loopj.android.http.RequestParams;
 
 import java.io.File;
 import java.io.IOException;
-import java.text.SimpleDateFormat;
+import java.text.DateFormat;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Map;
 
 import cz.msebera.android.httpclient.Header;
@@ -42,12 +41,13 @@ import cz.msebera.android.httpclient.Header;
 public class IOUtils extends ReactContextBaseJavaModule implements ActivityEventListener {
 
 
-    private Map<Integer, Promise> requests;
-    private Map<Integer, File> captureRequests;
+    private SparseArray<Promise> requests = new SparseArray<>();
+    private SparseArray<File> captureRequests = new SparseArray<>();
+    private ReactApplicationContext context;
+
     public IOUtils(ReactApplicationContext reactContext) {
         super(reactContext);
-        requests = new HashMap<>();
-        captureRequests = new HashMap<>();
+        context = reactContext;
         reactContext.addActivityEventListener(this);
     }
 
@@ -78,7 +78,7 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
     @ReactMethod
     public void pickFile(Promise cb){
         Long time = System.currentTimeMillis();
-        int id = time.intValue();
+        Integer id = Math.abs(time.intValue());
 
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
         intent.setType("file/*");
@@ -89,7 +89,7 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
     @ReactMethod
     public void pickImage(Promise cb){
         Long time = System.currentTimeMillis();
-        int id = time.intValue();
+        Integer id = Math.abs(time.intValue());
 
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
 
@@ -101,12 +101,13 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
     @ReactMethod
     public void takePicture(Promise cb){
         Long time = System.currentTimeMillis();
-        int id = time.intValue();
+        Integer id = Math.abs(time.intValue());
+
         Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        String formattedImageName = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".jpg";
-        File image_file = new File(Environment.getExternalStoragePublicDirectory(
-                Environment.DIRECTORY_PICTURES), formattedImageName);
+        String formattedImageName = DateFormat.getDateTimeInstance().format(new Date()) + ".jpg";
+        File image_file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), formattedImageName);
         Uri imageUri = Uri.fromFile(image_file);
+
         intent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
         getCurrentActivity().startActivityForResult(intent, id);
         captureRequests.put(id, image_file);
@@ -116,7 +117,8 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
     @ReactMethod
     public void recordVideo(Promise cb){
         Long time = System.currentTimeMillis();
-        int id = time.intValue();
+        Integer id = Math.abs(time.intValue());
+
         Intent intent = new Intent(MediaStore.ACTION_VIDEO_CAPTURE);
         getCurrentActivity().startActivityForResult(intent, id);
         requests.put(id, cb);
@@ -125,7 +127,7 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
     @ReactMethod
     public void pickVideo(Promise cb){
         Long time = System.currentTimeMillis();
-        int id = time.intValue();
+        Integer id = Math.abs(time.intValue());
 
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
         intent.setType("video/*");
@@ -135,9 +137,6 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        Log.d("result", String.format("%b %b %b", data == null ,
-                requests.get(requestCode) == null ,
-                captureRequests.get(requestCode) == null));
 
         // if this id corresponse to a camera requestcode
         //data is null when coming from camera or a cancel
@@ -152,7 +151,7 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
             Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
             Uri contentUri = Uri.fromFile(f);
             mediaScanIntent.setData(contentUri);
-            getCurrentActivity().sendBroadcast(mediaScanIntent);
+            context.sendBroadcast(mediaScanIntent);
         }
         else if(data.getData().toString().contains("content://")){
             f = new File(getRealPathFromURI(getCurrentActivity(), data.getData()));
@@ -270,14 +269,12 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
             }
         }
 
-        FileAsyncHttpResponseHandler responder = new FileAsyncHttpResponseHandler(getCurrentActivity()) {
+        FileAsyncHttpResponseHandler responder = new FileAsyncHttpResponseHandler(context) {
             @Override
             public void onStart() {
                 if(start != null){
-                    Log.d("start", "START");
                     start.invoke();
                 }
-
             }
 
             @Override
@@ -301,7 +298,6 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
                     result.resolve(arguments);
 
                 }
-
             }
 
             @Override
@@ -310,13 +306,12 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
                     result.reject(String.valueOf(statusCode), throwable);
             }
         };
-        String method = args.getString("method");
-        if(method == null || method.toLowerCase().equals("post")){
+        if(!args.hasKey("method") ||
+                (args.hasKey("method") && args.getString("method").toLowerCase().equals("post"))){
             client.post(args.getString("uploadUrl"), params, responder);
         }
         else{
             client.put(args.getString("uploadUrl"), params, responder);
         }
     }
-
 }

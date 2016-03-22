@@ -2,29 +2,33 @@
 
 There is plenty of room for improvment by adding additional react bindings for props and callbacks.
 
-##### Props:
-| Property | Type | Default | Description |
-|---------------|----------|--------------|----------------------------------------------------------------|
-| souce | Object | null | same as the react image format |
+###Examples
+---
 
-## Include in your App
+```javascript
 
-Installation
-------------
+```
+
+#Installation
+---
 
 Install the npm package [`react-native-io-utils`](https://www.npmjs.com/package/react-native-io-utils). Inside your React Native project, run ([example](https://github.com/Anthonyzou/react-native-io-utils/tree/master/example)):
+
 ```bash
 npm install --save react-native-io-utils
 ```
 
 In `android/settings.gradle` add the following lines
+
 ```
 include :react-native-io-utils'
 project(':react-native-io-utils').projectDir = file('../node_modules/react-native-io-utils/android')
 ```
-**NOTE** : If you have included other libraries in your project, the `include` line will contain the other dependencies too.
+
+---
 
 In `android/app/build.gradle`, add a dependency to `':react-native-io-utils'`
+
 ```
 dependencies {
     compile project(':react-native-io-utils')
