@@ -8,7 +8,8 @@
   },
   "dependencies": {
     "path": "^0.12.7",
-    "react-native": "^0.21.0",
-    "react-native-router-flux": "^2.3.9"
+    "react-native": "^0.22.2",
+    "react-native-router-flux": "^2.3.9",
+    "react-native-io-utils" : "../."
   }
 }

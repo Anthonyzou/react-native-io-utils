@@ -1,12 +1,12 @@
 # React native IO utils for Android
 
-There is plenty of room for improvment by adding additional react bindings for props and callbacks.
+Network file upload and file download. As well as file/image/video picking utilities for android.
 
 ###Examples
 ---
 
 ```javascript
-
+  
 ```
 
 #Installation
