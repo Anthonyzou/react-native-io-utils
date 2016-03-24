@@ -1,7 +1,6 @@
 package com.rn.io.utils;
 
 
-import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
@@ -154,7 +153,7 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
             context.sendBroadcast(mediaScanIntent);
         }
         else if(data.getData().toString().contains("content://")){
-            f = new File(getRealPathFromURI(getCurrentActivity(), data.getData()));
+            f = new File(getRealPathFromURI( data.getData()));
         } else{
             f = new File(data.getData().getPath());
         }
@@ -168,7 +167,7 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
         captureRequests.remove(requestCode);
     }
 
-    public String getRealPathFromURI(Context context, Uri contentUri) {
+    public String getRealPathFromURI(Uri contentUri) {
         Cursor cursor = null;
         try {
             String[] proj = { MediaStore.Images.Media.DATA };
