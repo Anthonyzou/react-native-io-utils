@@ -141,30 +141,28 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        try{
+            File f;
+            if(captureRequests.get(requestCode) != null){
+                f = captureRequests.get(requestCode);
+                Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+                Uri contentUri = Uri.fromFile(f);
+                mediaScanIntent.setData(contentUri);
+                context.sendBroadcast(mediaScanIntent);
+            } else{
+                f = new File(getPath(context,data.getData()));
+            }
 
-        // if this id corresponse to a camera requestcode
-        //data is null when coming from camera or a cancel
-        if(data == null && captureRequests.get(requestCode) == null) {
-            requests.remove(requestCode);
-            return ;
+            WritableMap arguments = Arguments.createMap();
+            arguments.putString("uri", f.toURI().toString());
+            arguments.putString("path", f.getAbsolutePath());
+
+            requests.get(requestCode).resolve(arguments);
+
         }
-
-        File f;
-        if(captureRequests.get(requestCode) != null){
-            f = captureRequests.get(requestCode);
-            Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-            Uri contentUri = Uri.fromFile(f);
-            mediaScanIntent.setData(contentUri);
-            context.sendBroadcast(mediaScanIntent);
-        } else{
-            f = new File(getPath(context,data.getData()));
+        catch(Exception e){
+            requests.get(requestCode).reject("error", e.getMessage());
         }
-
-        WritableMap arguments = Arguments.createMap();
-        arguments.putString("uri", f.toURI().toString());
-        arguments.putString("path", f.getAbsolutePath());
-
-        requests.get(requestCode).resolve(arguments);
         requests.remove(requestCode);
         captureRequests.remove(requestCode);
     }
