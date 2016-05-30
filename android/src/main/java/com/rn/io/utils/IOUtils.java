@@ -11,12 +11,12 @@ import android.os.Build;
 import android.os.Environment;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
+import android.util.Log;
 import android.util.SparseArray;
 import android.webkit.MimeTypeMap;
 
 import com.facebook.react.bridge.ActivityEventListener;
 import com.facebook.react.bridge.Arguments;
-import com.facebook.react.bridge.Callback;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
@@ -26,17 +26,17 @@ import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.ReadableMapKeySetIterator;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.common.MapBuilder;
-import com.loopj.android.http.AsyncHttpClient;
-import com.loopj.android.http.FileAsyncHttpResponseHandler;
-import com.loopj.android.http.RequestParams;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.koushikdutta.async.future.FutureCallback;
+import com.koushikdutta.ion.Ion;
+import com.koushikdutta.ion.Response;
+import com.koushikdutta.ion.builder.Builders;
 
 import java.io.File;
-import java.io.IOException;
 import java.text.DateFormat;
 import java.util.Date;
 import java.util.Map;
-
-import cz.msebera.android.httpclient.Header;
 
 /**
  * Created by azou on 15/02/16.
@@ -53,6 +53,7 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
         super(reactContext);
         context = reactContext;
         reactContext.addActivityEventListener(this);
+
     }
 
     @Override
@@ -64,19 +65,6 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
     public Map<String, Object> getConstants() {
         final Map<String, Object> constants = MapBuilder.newHashMap();
         return constants;
-    }
-
-    @ReactMethod
-    public void tempFile(String prefix, String suffix, Promise cb) {
-        try {
-            File f = File.createTempFile(prefix, suffix);
-            WritableMap params = Arguments.createMap();
-            params.putString("path", f.getAbsolutePath());
-            params.putString("uri", f.toURI().toString());
-            cb.resolve(params);
-        } catch (IOException e) {
-            cb.reject(e);
-        }
     }
 
     @ReactMethod
@@ -297,36 +285,34 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
         return "com.android.providers.media.documents".equals(uri.getAuthority());
     }
 
+
     @ReactMethod
-    public void download(final ReadableMap args, final Callback start, final Promise result) {
-        AsyncHttpClient client = new AsyncHttpClient();
-        RequestParams params = new RequestParams();
+    public void download(final ReadableMap args, final Promise result) {
 
-        FileAsyncHttpResponseHandler responder = new FileAsyncHttpResponseHandler(getCurrentActivity()) {
-            @Override
-            public void onStart() {
-                if(start != null)
-                    start.invoke();
+        Builders.Any.B builder =  Ion.with(context).load(args.getString("url"));
+
+        if(args.hasKey("headers")){
+            ReadableMap headers = args.getMap("headers");
+            ReadableMapKeySetIterator iterator = headers.keySetIterator();
+            while (iterator.hasNextKey()) {
+                String key = iterator.nextKey();
+                builder = builder.addHeader(key, headers.getString(key));
             }
+        }
 
-            @Override
-            public void onSuccess(int statusCode, Header[] headers, File response) {
-                if(result != null){
+        builder
+            .write(new File(context.getCacheDir(), args.getString("name")))
+            .withResponse()
+            .setCallback(new FutureCallback<Response<File>>() {
+                @Override
+                public void onCompleted(Exception e, Response<File> response) {
                     WritableMap args = Arguments.createMap();
-                    args.putString("path", response.getAbsolutePath());
-                    args.putString("uri", response.toURI().toString());
+                    args.putString("path", response.getResult().getAbsolutePath());
+                    args.putString("uri", response.getResult().toURI().toString());
                     result.resolve(args);
                 }
-            }
-
-            @Override
-            public void onFailure(int statusCode, Header[] headers, Throwable throwable, File file) {
-                if(result != null)
-                    result.reject(String.valueOf(statusCode), throwable);
-            }
-        };
-
-        client.get(args.getString("url"), params, responder);
+            })
+        ;
     }
 
     public static String getMimeType(String url) {
@@ -339,93 +325,53 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
     }
 
     @ReactMethod
-    public void upload(final ReadableMap args, final Callback start, final Promise result) {
-        AsyncHttpClient client = new AsyncHttpClient();
-        RequestParams params = new RequestParams();
+    public void upload(final ReadableMap args, final Promise result) {
         ReadableMapKeySetIterator iterator;
+        Builders.Any.B builder = Ion.with(context)
+                .load(args.getString("uploadUrl"));
 
         if(args.hasKey("headers")) {
             ReadableMap headers = args.getMap("headers");
             iterator = headers.keySetIterator();
             while (iterator.hasNextKey()) {
                 String key = iterator.nextKey();
-                client.addHeader(key, headers.getString(key));
+                builder = builder.addHeader(key, headers.getString(key));
             }
         }
-
 
         if(args.hasKey("params")){
             ReadableMap reqParams = args.getMap("params");
             iterator = reqParams.keySetIterator();
             while (iterator.hasNextKey()) {
                 String key = iterator.nextKey();
-                params.add(key, reqParams.getString(key));
+                builder.addQuery(key, reqParams.getString(key));
             }
         }
-
 
         ReadableArray files = args.getArray("files");
         for(int i = 0; i < files.size(); i++){
             ReadableMap file = files.getMap(i);
-            try {
-                String filepath = file.getString("filepath");
-                File f = new File(filepath);
-                params.put(
-                        file.getString("name"),
-                        f,
-                        getMimeType(filepath),
-                        file.getString("filename")
-                );
-
-            } catch (Exception e) {
-                result.reject(e);
-                return;
-            }
+            String filepath = file.getString("filepath");
+            File f = new File(filepath);
+            builder.setMultipartFile(file.getString("name"), getMimeType(filepath), f);
         }
 
-        FileAsyncHttpResponseHandler responder = new FileAsyncHttpResponseHandler(context) {
-            @Override
-            public void onStart() {
-                if(start != null){
-                    start.invoke();
-                }
-            }
-
-            @Override
-            public void onSuccess(int statusCode, Header[] headers, File response) {
-                if(result != null){
-
-                    WritableMap arguments = Arguments.createMap();
-                    WritableMap headerObj = Arguments.createMap();
-                    for(Header H : headers){
-                        headerObj.putString(H.getName(), H.getValue());
-                    }
-
-                    arguments.putInt("status", statusCode);
-                    arguments.putMap("headers", headerObj);
-                    try {
-                        arguments.putString("data", org.apache.commons.io.FileUtils.readFileToString(response, "UTF-8"));
-                    } catch (IOException e) {
+        builder
+            .asString()
+            .withResponse()
+            .setCallback(new FutureCallback<Response<String>>() {
+                @Override
+                public void onCompleted(Exception e, Response<String> httpResult) {
+                    if(e!=null){
                         result.reject(e);
                         return;
                     }
+
+                    WritableMap arguments = Arguments.createMap();
+                    arguments.putString("data", httpResult.getResult());
                     result.resolve(arguments);
-
                 }
-            }
-
-            @Override
-            public void onFailure(int statusCode, Header[] headers, Throwable throwable, File file) {
-                if(result != null)
-                    result.reject(String.valueOf(statusCode), throwable);
-            }
-        };
-        if(!args.hasKey("method") ||
-                (args.hasKey("method") && args.getString("method").toLowerCase().equals("post"))){
-            client.post(args.getString("uploadUrl"), params, responder);
-        }
-        else{
-            client.put(args.getString("uploadUrl"), params, responder);
-        }
+            })
+        ;
     }
 }
