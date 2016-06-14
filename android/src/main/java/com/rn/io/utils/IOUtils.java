@@ -11,7 +11,6 @@ import android.os.Build;
 import android.os.Environment;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
-import android.util.Log;
 import android.util.SparseArray;
 import android.webkit.MimeTypeMap;
 
@@ -26,8 +25,6 @@ import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.ReadableMapKeySetIterator;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.common.MapBuilder;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.koushikdutta.async.future.FutureCallback;
 import com.koushikdutta.ion.Ion;
 import com.koushikdutta.ion.Response;
@@ -307,8 +304,10 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
                 @Override
                 public void onCompleted(Exception e, Response<File> response) {
                     WritableMap args = Arguments.createMap();
-                    args.putString("path", response.getResult().getAbsolutePath());
-                    args.putString("uri", response.getResult().toURI().toString());
+                    if(response.getResult()!=null){
+                        args.putString("path", response.getResult().getAbsolutePath());
+                        args.putString("uri", response.getResult().toURI().toString());
+                    }
                     result.resolve(args);
                 }
             })
