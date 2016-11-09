@@ -2,6 +2,7 @@ package com.rn.io.utils;
 
 
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.content.ContentUris;
 import android.content.Context;
 import android.content.Intent;
@@ -125,7 +126,7 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
     }
 
     @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+    public void onActivityResult(Activity activity, int requestCode, int resultCode, Intent data) {
         try{
             File f;
             if(captureRequests.get(requestCode) != null){
@@ -152,6 +153,11 @@ public class IOUtils extends ReactContextBaseJavaModule implements ActivityEvent
         captureRequests.remove(requestCode);
     }
 
+    @Override
+    public void onNewIntent(Intent intent) {
+
+    }
+    
     /**
      * Get a file path from a Uri. This will get the the path for Storage Access
      * Framework Documents, as well as the _data field for the MediaStore and
